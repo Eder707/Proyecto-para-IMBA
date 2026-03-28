@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API = "http://localhost:8000";
+const API = "https://proyecto-para-imba.onrender.com";
 
 const CATEGORIAS = [
   "Medicamentos", "Vacunas", "Antiparasitarios",
