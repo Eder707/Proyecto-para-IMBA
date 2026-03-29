@@ -601,7 +601,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 font-sans">
       <aside className="fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900 flex-col z-30 hidden lg:flex">
         <div className="px-6 py-7 flex items-center gap-3 border-b border-white/10">
-          <img src="/logo-imba.png" alt="Logo Veterinaria" className="w-10 h-10 object-contain" />
+          <img src="/logo-imba.png" alt="Logo Veterinaria" className="w-15 h-15 object-contain" />
           <div>
             <p className="text-white font-bold text-sm leading-tight">IMBA veterinaria</p>
             <p className="text-slate-400 text-xs">Sistema de Inventario</p>
