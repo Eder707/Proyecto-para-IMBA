@@ -13,7 +13,11 @@ app = FastAPI(title="VetInventory API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://proyecto-para-imba.vercel.app",
+        "https://proyecto-para-imba-jsbq7mbar-eder707s-projects.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
