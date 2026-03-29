@@ -626,7 +626,7 @@ export default function App() {
       <header className="lg:hidden sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img src="/logo-imba.png" alt="Logo Veterinaria" className="w-8 h-8 object-contain" />
-          <span className="font-bold text-slate-800 text-sm">VetInventory</span>
+          <span className="font-bold text-slate-800 text-sm">IMBA veterinaria</span>
         </div>
         <div className="flex gap-1">
           {tabs.map(t => (
