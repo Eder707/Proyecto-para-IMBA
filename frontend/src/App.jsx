@@ -490,19 +490,25 @@ function ProductosTab({ productos, onRefresh }) {
                   <td className="px-5 py-3.5 font-medium text-slate-700">${p.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
                   <td className="px-5 py-3.5"><Badge text={st.label} variant={st.v} /></td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       {!inactivo && (
                         <button onClick={() => setMovModal(p)} title="Movimiento"
-                          className="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 transition"><Icon.ArrowUp /></button>
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold transition">
+                          <Icon.ArrowUp /> Stock
+                        </button>
                       )}
                       <button onClick={() => setModal(p)} title="Editar"
-                        className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 transition"><Icon.Edit /></button>
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold transition">
+                        <Icon.Edit /> Editar
+                      </button>
                       <button onClick={() => handleBaja(p)} title={inactivo ? "Reactivar" : "Dar de baja"}
-                        className={`p-1.5 rounded-lg transition ${inactivo ? "text-emerald-600 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
-                        {inactivo ? <Icon.Refresh /> : <Icon.PowerOff />}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-white text-xs font-semibold transition ${inactivo ? "bg-emerald-500 hover:bg-emerald-600" : "bg-amber-500 hover:bg-amber-600"}`}>
+                        {inactivo ? <><Icon.Refresh /> Activar</> : <><Icon.PowerOff /> Baja</>}
                       </button>
                       <button onClick={() => handleDelete(p.id)} title="Eliminar"
-                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition"><Icon.Trash /></button>
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition">
+                        <Icon.Trash /> Borrar
+                      </button>
                     </div>
                   </td>
                 </tr>
