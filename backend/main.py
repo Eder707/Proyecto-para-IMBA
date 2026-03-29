@@ -72,12 +72,23 @@ async def listar_productos(stock_bajo: Optional[bool] = None):
 
 @app.post("/productos", status_code=201, tags=["Productos"])
 async def crear_producto(producto: ProductCreate):
-    data = producto.model_dump()
-    data["updated_at"] = datetime.utcnow().isoformat()
     async with httpx.AsyncClient() as client:
+        # 1. Verificar si el nombre ya existe (ignora mayúsculas/minúsculas)
+        check_r = await client.get(
+            db_url("productos"), 
+            headers=headers(), 
+            params={"nombre": f"ilike.{producto.nombre}"}
+        )
+        if check_r.json():
+            raise HTTPException(status_code=400, detail=f"El producto '{producto.nombre}' ya existe.")
+
+        # 2. Proceder a crear
+        data = producto.model_dump()
+        data["updated_at"] = datetime.utcnow().isoformat()
         r = await client.post(db_url("productos"), headers=headers(), json=data)
+    
     if r.status_code not in (200, 201):
-        raise HTTPException(status_code=400, detail=r.text)
+        raise HTTPException(status_code=400, detail="Error al guardar en la base de datos.")
     return r.json()[0]
 
 @app.get("/productos/{producto_id}", tags=["Productos"])

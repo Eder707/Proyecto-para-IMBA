@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API = "https://proyecto-para-imba.onrender.com";
+const API = "http://localhost:8000";
+const PAGE_SIZE = 10;
 
 const CATEGORIAS = [
   "Medicamentos", "Vacunas", "Antiparasitarios",
   "Alimentos", "Insumos", "Equipos", "Otros",
 ];
+
+const LIMITES = {
+  nombre: 50,
+  descripcion: 150,
+  categoria: 40,
+};
 
 // ── ICONS ──────────────────────────────────────────────
 const Icon = {
@@ -21,9 +28,11 @@ const Icon = {
   History: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>),
   Paw: () => (<svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><circle cx="11" cy="4" r="2" /><circle cx="18" cy="8" r="2" /><circle cx="4" cy="8" r="2" /><circle cx="6.5" cy="15.5" r="2" /><circle cx="17.5" cy="15.5" r="2" /><path d="M12 12c-2 0-4 1.5-5 4s-.5 5 2 5h6c2.5 0 3-3 2-5s-3-4-5-4z" /></svg>),
   X: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M18 6 6 18M6 6l12 12" /></svg>),
-  Excel: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>),
+  Excel: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>),
   PowerOff: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><line x1="12" y1="2" x2="12" y2="12" /></svg>),
   Refresh: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>),
+  ChevLeft: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path d="m15 18-6-6 6-6" /></svg>),
+  ChevRight: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path d="m9 18 6-6-6-6" /></svg>),
 };
 
 // ── API ────────────────────────────────────────────────
@@ -45,17 +54,12 @@ function exportToExcel(productos) {
   const headers = ["ID", "Nombre", "Descripción", "Categoría", "Stock Actual", "Stock Mínimo", "Precio", "Estado"];
   const rows = productos.map(p => [
     p.id, p.nombre, p.descripcion || "", p.categoria,
-    p.stock_actual, p.stock_minimo,
-    p.precio.toFixed(2),
+    p.stock_actual, p.stock_minimo, p.precio.toFixed(2),
     !p.activo ? "Baja" : p.stock_actual < p.stock_minimo ? "Stock Bajo" : "OK"
   ]);
-
-  let csv = "\uFEFF"; // BOM para UTF-8 en Excel
+  let csv = "\uFEFF";
   csv += headers.join(",") + "\n";
-  rows.forEach(r => {
-    csv += r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
-  });
-
+  rows.forEach(r => { csv += r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n"; });
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -65,7 +69,41 @@ function exportToExcel(productos) {
   URL.revokeObjectURL(url);
 }
 
-// ── COMPONENTS ─────────────────────────────────────────
+// ── VALIDATE FORM ──────────────────────────────────────
+function validateForm(form) {
+  const errors = {};
+  if (!form.nombre.trim()) errors.nombre = "El nombre es obligatorio.";
+  else if (form.nombre.trim().length > LIMITES.nombre) errors.nombre = `Máximo ${LIMITES.nombre} caracteres.`;
+  if (form.descripcion && form.descripcion.length > LIMITES.descripcion) errors.descripcion = `Máximo ${LIMITES.descripcion} caracteres.`;
+  if (!form.precio || form.precio <= 0) errors.precio = "El precio debe ser mayor a 0.";
+  if (form.stock_actual < 0) errors.stock_actual = "No puede ser negativo.";
+  if (form.stock_minimo < 0) errors.stock_minimo = "No puede ser negativo.";
+  return errors;
+}
+
+// ── DUPLICATE CONFIRM MODAL ────────────────────────────
+function DuplicateModal({ nombre, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-4 flex items-center gap-3">
+          <span className="text-amber-500"><Icon.Alert /></span>
+          <h3 className="font-bold text-amber-800">Producto duplicado</h3>
+        </div>
+        <div className="px-6 py-5">
+          <p className="text-slate-600 text-sm">Ya existe un producto llamado <span className="font-bold text-slate-800">"{nombre}"</span>.</p>
+          <p className="text-slate-500 text-sm mt-2">¿Deseas crearlo de todas formas como un producto adicional?</p>
+        </div>
+        <div className="px-6 pb-5 flex gap-3 justify-end">
+          <button onClick={onCancel} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">Cancelar</button>
+          <button onClick={onConfirm} className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition">Sí, crear igual</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── STAT CARD ──────────────────────────────────────────
 function StatCard({ icon, label, value, accent, sublabel }) {
   return (
     <div className="relative bg-white rounded-2xl p-5 border border-slate-100 shadow-sm overflow-hidden">
@@ -81,83 +119,145 @@ function StatCard({ icon, label, value, accent, sublabel }) {
 }
 
 function Badge({ text, variant = "neutral" }) {
-  const map = {
-    neutral: "bg-slate-100 text-slate-600",
-    danger: "bg-red-50 text-red-600 border border-red-200",
-    success: "bg-emerald-50 text-emerald-600 border border-emerald-200",
-    warning: "bg-amber-50 text-amber-600 border border-amber-200",
-    info: "bg-sky-50 text-sky-600 border border-sky-200",
-    inactive: "bg-slate-100 text-slate-400 border border-slate-200",
-  };
+  const map = { neutral: "bg-slate-100 text-slate-600", danger: "bg-red-50 text-red-600 border border-red-200", success: "bg-emerald-50 text-emerald-600 border border-emerald-200", warning: "bg-amber-50 text-amber-600 border border-amber-200", info: "bg-sky-50 text-sky-600 border border-sky-200", inactive: "bg-slate-100 text-slate-400 border border-slate-200" };
   return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[variant]}`}>{text}</span>;
 }
 
+// ── FIELD WITH COUNTER ─────────────────────────────────
+function FieldCounter({ value, max }) {
+  const over = value.length > max;
+  return (
+    <span className={`text-xs ${over ? "text-red-500 font-semibold" : "text-slate-400"}`}>
+      {value.length}/{max}
+    </span>
+  );
+}
+
 // ── PRODUCT MODAL ──────────────────────────────────────
-function ProductModal({ product, onSave, onClose }) {
+function ProductModal({ product, allProductos, onSave, onClose }) {
   const isEdit = !!product?.id;
   const [form, setForm] = useState(product ?? { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0] });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.type === "number" ? +e.target.value : e.target.value }));
+  const [apiError, setApiError] = useState("");
+  const [showDupModal, setShowDupModal] = useState(false);
 
-  async function handleSubmit() {
-    setLoading(true); setError("");
-    try {
-      if (isEdit) await apiFetch(`/productos/${product.id}`, { method: "PUT", body: JSON.stringify(form) });
-      else await apiFetch("/productos", { method: "POST", body: JSON.stringify(form) });
-      onSave();
-    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  const set = (key) => (e) => {
+    const val = e.target.type === "number" ? +e.target.value : e.target.value;
+    setForm(f => ({ ...f, [key]: val }));
+    setErrors(er => ({ ...er, [key]: undefined }));
+  };
+
+  function checkAndSubmit() {
+    const errs = validateForm(form);
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    // Verificar duplicado solo en creación
+    if (!isEdit) {
+      const existe = allProductos.some(p => p.nombre.toLowerCase().trim() === form.nombre.toLowerCase().trim() && p.id !== product?.id);
+      if (existe) { setShowDupModal(true); return; }
+    }
+    doSave();
   }
 
-  const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition";
+  async function doSave(forzar = false) {
+    setShowDupModal(false);
+    setLoading(true); setApiError("");
+    try {
+      const payload = { ...form };
+      if (forzar) payload._forzar = true;
+      if (isEdit) await apiFetch(`/productos/${product.id}`, { method: "PUT", body: JSON.stringify(form) });
+      else await apiFetch("/productos", { method: "POST", body: JSON.stringify({ ...form, _skip_check: forzar }) });
+      onSave();
+    } catch (e) { setApiError(e.message); } finally { setLoading(false); }
+  }
+
+  const inp = (field) => `w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent transition ${errors[field] ? "border-red-400 focus:ring-red-300" : "border-slate-200 focus:ring-sky-400"}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-sky-600 to-blue-700 px-6 py-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-white text-lg font-bold">{isEdit ? "Editar Producto" : "Nuevo Producto"}</h2>
-            <p className="text-sky-200 text-xs mt-0.5">{isEdit ? "Modifica los campos necesarios" : "Completa la información del producto"}</p>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
+          <div className="bg-gradient-to-r from-sky-600 to-blue-700 px-6 py-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-white text-lg font-bold">{isEdit ? "Editar Producto" : "Nuevo Producto"}</h2>
+              <p className="text-sky-200 text-xs mt-0.5">{isEdit ? "Modifica los campos necesarios" : "Completa la información del producto"}</p>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white transition"><Icon.X /></button>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white transition"><Icon.X /></button>
-        </div>
-        <div className="p-6 space-y-4">
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Nombre *</label>
-              <input className={inp} value={form.nombre} onChange={set("nombre")} placeholder="Ej. Amoxicilina 500mg" />
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Descripción</label>
-              <textarea className={inp} rows={2} value={form.descripcion ?? ""} onChange={set("descripcion")} placeholder="Descripción breve" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Categoría *</label>
-              <select className={inp} value={form.categoria} onChange={set("categoria")}>{CATEGORIAS.map(c => <option key={c}>{c}</option>)}</select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Precio (MXN) *</label>
-              <input type="number" className={inp} value={form.precio} onChange={set("precio")} min={0} step={0.01} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label>
-              <input type="number" className={inp} value={form.stock_actual} onChange={set("stock_actual")} min={0} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label>
-              <input type="number" className={inp} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} />
+
+          <div className="p-6 space-y-4">
+            {apiError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{apiError}</div>}
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Nombre */}
+              <div className="col-span-2">
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre *</label>
+                  <FieldCounter value={form.nombre} max={LIMITES.nombre} />
+                </div>
+                <input className={inp("nombre")} value={form.nombre} onChange={set("nombre")} maxLength={LIMITES.nombre + 10} placeholder="Ej. Amoxicilina 500mg" />
+                {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre}</p>}
+              </div>
+
+              {/* Descripción */}
+              <div className="col-span-2">
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Descripción</label>
+                  <FieldCounter value={form.descripcion ?? ""} max={LIMITES.descripcion} />
+                </div>
+                <textarea className={inp("descripcion")} rows={2} value={form.descripcion ?? ""} onChange={set("descripcion")} maxLength={LIMITES.descripcion + 10} placeholder="Descripción breve del producto" />
+                {errors.descripcion && <p className="text-red-500 text-xs mt-1">{errors.descripcion}</p>}
+              </div>
+
+              {/* Categoría */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Categoría *</label>
+                <select className={inp("categoria")} value={form.categoria} onChange={set("categoria")}>
+                  {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+
+              {/* Precio */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Precio (MXN) *</label>
+                <input type="number" className={inp("precio")} value={form.precio} onChange={set("precio")} min={0} step={0.01} />
+                {errors.precio && <p className="text-red-500 text-xs mt-1">{errors.precio}</p>}
+              </div>
+
+              {/* Stock actual */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label>
+                <input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} />
+                {errors.stock_actual && <p className="text-red-500 text-xs mt-1">{errors.stock_actual}</p>}
+              </div>
+
+              {/* Stock mínimo */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label>
+                <input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} />
+                {errors.stock_minimo && <p className="text-red-500 text-xs mt-1">{errors.stock_minimo}</p>}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="px-6 pb-6 flex gap-3 justify-end">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">Cancelar</button>
-          <button onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition disabled:opacity-50">
-            {loading ? "Guardando…" : isEdit ? "Guardar Cambios" : "Crear Producto"}
-          </button>
+
+          <div className="px-6 pb-6 flex gap-3 justify-end">
+            <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">Cancelar</button>
+            <button onClick={checkAndSubmit} disabled={loading} className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition disabled:opacity-50">
+              {loading ? "Guardando…" : isEdit ? "Guardar Cambios" : "Crear Producto"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {showDupModal && (
+        <DuplicateModal
+          nombre={form.nombre}
+          onConfirm={() => doSave(true)}
+          onCancel={() => setShowDupModal(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -226,6 +326,35 @@ function MovModal({ product, onSave, onClose }) {
   );
 }
 
+// ── PAGINATION ─────────────────────────────────────────
+function Pagination({ total, page, onPage }) {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-2 py-3">
+      <p className="text-xs text-slate-400">
+        Mostrando {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} de <span className="font-semibold text-slate-600">{total}</span> productos
+      </p>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onPage(page - 1)} disabled={page === 1}
+          className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition">
+          <Icon.ChevLeft />
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+          <button key={n} onClick={() => onPage(n)}
+            className={`w-8 h-8 rounded-lg text-xs font-semibold transition ${n === page ? "bg-sky-600 text-white" : "border border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
+            {n}
+          </button>
+        ))}
+        <button onClick={() => onPage(page + 1)} disabled={page === totalPages}
+          className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition">
+          <Icon.ChevRight />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── DASHBOARD ──────────────────────────────────────────
 function DashboardTab({ stats, productosBajos }) {
   if (!stats) return <div className="text-center py-16 text-slate-400 text-sm">Cargando estadísticas…</div>;
@@ -270,6 +399,7 @@ function ProductosTab({ productos, onRefresh }) {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("Todas");
   const [mostrarBajas, setMostrarBajas] = useState(false);
+  const [page, setPage] = useState(1);
 
   async function handleDelete(id) {
     if (!window.confirm("¿Eliminar este producto permanentemente?")) return;
@@ -286,6 +416,9 @@ function ProductosTab({ productos, onRefresh }) {
     } catch (e) { alert(e.message); }
   }
 
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [search, catFilter, mostrarBajas]);
+
   const filtered = productos.filter(p => {
     const matchSearch = p.nombre.toLowerCase().includes(search.toLowerCase());
     const matchCat = catFilter === "Todas" || p.categoria === catFilter;
@@ -293,7 +426,9 @@ function ProductosTab({ productos, onRefresh }) {
     return matchSearch && matchCat && matchBaja;
   });
 
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const cats = ["Todas", ...new Set(productos.map(p => p.categoria))];
+
   const stockStatus = (p) => {
     if (!p.activo) return { label: "Baja", v: "inactive" };
     if (p.stock_actual === 0) return { label: "Sin Stock", v: "danger" };
@@ -336,9 +471,9 @@ function ProductosTab({ productos, onRefresh }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.length === 0 ? (
+            {paginated.length === 0 ? (
               <tr><td colSpan={6} className="text-center text-slate-400 py-12 text-sm">Sin resultados</td></tr>
-            ) : filtered.map(p => {
+            ) : paginated.map(p => {
               const st = stockStatus(p);
               const inactivo = p.activo === false;
               return (
@@ -354,38 +489,33 @@ function ProductosTab({ productos, onRefresh }) {
                   </td>
                   <td className="px-5 py-3.5 font-medium text-slate-700">${p.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
                   <td className="px-5 py-3.5"><Badge text={st.label} variant={st.v} /></td>
-                  
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       {!inactivo && (
-                        <button onClick={() => setMovModal(p)} title="Registrar Movimiento"
-                          className="p-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition shadow-sm hover:shadow-md">
-                          <Icon.ArrowUp />
-                        </button>
+                        <button onClick={() => setMovModal(p)} title="Movimiento"
+                          className="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 transition"><Icon.ArrowUp /></button>
                       )}
-                      <button onClick={() => setModal(p)} title="Editar Producto"
-                        className="p-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition shadow-sm hover:shadow-md">
-                        <Icon.Edit />
-                      </button>
-                      <button onClick={() => handleBaja(p)} title={inactivo ? "Reactivar Producto" : "Dar de baja"}
-                        className={`p-2.5 text-white rounded-xl transition shadow-sm hover:shadow-md ${inactivo ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-500 hover:bg-amber-600"}`}>
+                      <button onClick={() => setModal(p)} title="Editar"
+                        className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 transition"><Icon.Edit /></button>
+                      <button onClick={() => handleBaja(p)} title={inactivo ? "Reactivar" : "Dar de baja"}
+                        className={`p-1.5 rounded-lg transition ${inactivo ? "text-emerald-600 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
                         {inactivo ? <Icon.Refresh /> : <Icon.PowerOff />}
                       </button>
-                      <button onClick={() => handleDelete(p.id)} title="Eliminar Permanentemente"
-                        className="p-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition shadow-sm hover:shadow-md">
-                        <Icon.Trash />
-                      </button>
+                      <button onClick={() => handleDelete(p.id)} title="Eliminar"
+                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition"><Icon.Trash /></button>
                     </div>
                   </td>
-
                 </tr>
               );
             })}
           </tbody>
         </table>
+        <div className="border-t border-slate-100 px-3">
+          <Pagination total={filtered.length} page={page} onPage={setPage} />
+        </div>
       </div>
 
-      {modal && <ProductModal product={modal === "create" ? null : modal} onSave={() => { setModal(null); onRefresh(); }} onClose={() => setModal(null)} />}
+      {modal && <ProductModal product={modal === "create" ? null : modal} allProductos={productos} onSave={() => { setModal(null); onRefresh(); }} onClose={() => setModal(null)} />}
       {movModal && <MovModal product={movModal} onSave={() => { setMovModal(null); onRefresh(); }} onClose={() => setMovModal(null)} />}
     </div>
   );
@@ -463,7 +593,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
-      {/* SIDEBAR */}
       <aside className="fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900 flex-col z-30 hidden lg:flex">
         <div className="px-6 py-7 flex items-center gap-3 border-b border-white/10">
           <div className="w-9 h-9 bg-sky-500 rounded-xl flex items-center justify-center text-white"><Icon.Paw /></div>
@@ -488,7 +617,6 @@ export default function App() {
         </div>
       </aside>
 
-      {/* MOBILE NAV */}
       <header className="lg:hidden sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white"><Icon.Paw /></div>
@@ -504,7 +632,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="lg:pl-64 min-h-screen">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-7">
