@@ -603,7 +603,7 @@ export default function App() {
         <div className="px-6 py-7 flex items-center gap-3 border-b border-white/10">
           <img src="/logo-imba.png" alt="Logo Veterinaria" className="w-10 h-10 object-contain" />
           <div>
-            <p className="text-white font-bold text-sm leading-tight">VetInventory</p>
+            <p className="text-white font-bold text-sm leading-tight">IMBA veterinaria</p>
             <p className="text-slate-400 text-xs">Sistema de Inventario</p>
           </div>
         </div>
