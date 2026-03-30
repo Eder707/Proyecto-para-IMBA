@@ -174,7 +174,7 @@ function LoginPage({ onLogin }) {
         {/* Logo */}
         <div className="text-center mb-8">
           <img src="/logo-imba.png" alt="Logo IMBA" className="w-25 h-25 object-contain mx-auto mb-4" />
-          <h1 className="text-white text-2xl font-bold">Veterinaria</h1>
+          <h1 className="text-white text-2xl font-bold">INSTITUTO MUNICIPAL DE BIENESTAR ANIMAL</h1>
           <p className="text-slate-400 text-sm mt-1">Sistema de Inventario Veterinario</p>
         </div>
 
