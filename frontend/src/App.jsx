@@ -611,14 +611,30 @@ export default function App() {
         <div className="px-6 py-4 border-t border-white/10"><p className="text-xs text-slate-500">MVP v1.0 · FastAPI + Supabase</p></div>
       </aside>
 
-      <header className="lg:hidden sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <img src="/logo-imba.png" alt="Logo IMBA" className="w-20 h-20 object-contain" />
-          <span className="font-bold text-slate-800 text-sm">IMBA Veterinaria</span>
+      <header className="lg:hidden sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex flex-col gap-3 shadow-sm">
+        {/* Fila 1: Logo y botón Salir */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Redujimos el logo de w-20 a w-8 para que no estorbe */}
+            <img src="/logo-imba.png" alt="Logo IMBA" className="w-8 h-8 object-contain" />
+            <span className="font-bold text-slate-800 text-sm">IMBA Veterinaria</span>
+          </div>
+          <button onClick={handleLogout} className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 transition">
+            Salir
+          </button>
         </div>
-        <div className="flex gap-1">
-          {tabs.map(t => <button key={t.id} onClick={() => setTab(t.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${tab === t.id ? "bg-sky-600 text-white" : "text-slate-500 hover:bg-slate-100"}`}>{t.id === "dashboard" ? "Stats" : t.id === "productos" ? "Inventario" : "Historial"}</button>)}
-          <button onClick={handleLogout} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 hover:bg-red-50 transition">Salir</button>
+
+        {/* Fila 2: Pestañas de navegación distribuidas equitativamente */}
+        <div className="flex gap-2 w-full justify-between">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 px-2 py-2 rounded-lg text-xs font-semibold transition text-center whitespace-nowrap ${tab === t.id ? "bg-sky-600 text-white shadow-md shadow-sky-200" : "text-slate-500 hover:bg-slate-100"}`}
+            >
+              {t.id === "dashboard" ? "Stats" : t.id === "productos" ? "Inventario" : "Historial"}
+            </button>
+          ))}
         </div>
       </header>
 
