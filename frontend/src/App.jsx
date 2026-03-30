@@ -444,7 +444,6 @@ function ProductosTab({ productos, onRefresh }) {
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <input className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" placeholder="Buscar por nombre…" value={search} onChange={e=>setSearch(e.target.value)}/>
         <select className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" value={catFilter} onChange={e=>setCatFilter(e.target.value)}>{cats.map(c=><option key={c}>{c}</option>)}</select>
-        <button onClick={()=>setMostrarBajas(b=>!b)} className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition ${mostrarBajas?"bg-slate-700 text-white border-slate-700":"bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>{mostrarBajas?"Ocultar bajas":"Ver bajas"}</button>
         <button onClick={()=>exportToExcel(filtered)} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition"><Icon.Excel/> Exportar Excel</button>
         <button onClick={()=>setModal("create")} className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm shadow-sky-200"><Icon.Plus/> Nuevo Producto</button>
       </div>
@@ -466,7 +465,6 @@ function ProductosTab({ productos, onRefresh }) {
                     <div className="flex items-center gap-1.5">
                       {!inactivo&&<button onClick={()=>setMovModal(p)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold transition"><Icon.ArrowUp/> Stock</button>}
                       <button onClick={()=>setModal(p)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold transition"><Icon.Edit/> Editar</button>
-                      <button onClick={()=>handleBaja(p)} className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-white text-xs font-semibold transition ${inactivo?"bg-emerald-500 hover:bg-emerald-600":"bg-amber-500 hover:bg-amber-600"}`}>{inactivo?<><Icon.Refresh/> Activar</>:<><Icon.PowerOff/> Baja</>}</button>
                       <button onClick={()=>handleDelete(p.id)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition"><Icon.Trash/> Borrar</button>
                     </div>
                   </td>
