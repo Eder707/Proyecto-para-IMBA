@@ -84,7 +84,7 @@ function exportToExcel(productos) {
   ];
   worksheet['!cols'] = wscols;
 
-  // 4. PINTAR EL ENCABEZADO DE VERDE
+  // 4. PINTAR EL ENCABEZADO DE AZUL
   const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1'];
   celdasEncabezado.forEach(celda => {
     if (worksheet[celda]) {
