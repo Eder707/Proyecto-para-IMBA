@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { useState, useEffect, useCallback } from "react";
 
 const API = "https://proyecto-para-imba.onrender.com";
@@ -54,7 +54,7 @@ async function apiFetch(path, options = {}) {
 }
 
 // ── EXCEL ──────────────────────────────────────────────
-// ── EXCEL (.XLSX REAL) ───────────────────────────────
+// ── EXCEL (.XLSX CON ESTILO) ─────────────────────────
 function exportToExcel(productos) {
   // 1. Darle formato limpio a los datos
   const data = productos.map(p => ({
@@ -71,7 +71,7 @@ function exportToExcel(productos) {
   // 2. Crear la hoja de Excel
   const worksheet = XLSX.utils.json_to_sheet(data);
 
-  // 3. Hacer las columnas más anchas para que no se amontone
+  // 3. Hacer las columnas más anchas
   const wscols = [
     { wch: 5 },  // ID
     { wch: 25 }, // Nombre
@@ -84,11 +84,28 @@ function exportToExcel(productos) {
   ];
   worksheet['!cols'] = wscols;
 
-  // 4. Crear el archivo y descargarlo
+  // 4. PINTAR EL ENCABEZADO DE VERDE
+  const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1'];
+  celdasEncabezado.forEach(celda => {
+    if (worksheet[celda]) {
+      worksheet[celda].s = {
+        fill: {
+          patternType: "solid",
+          fgColor: { rgb: "92D050" } // Color Verde Excel
+        },
+        font: {
+          bold: true,
+          color: { rgb: "000000" } // Letra Negra
+        }
+      };
+    }
+  });
+
+  // 5. Crear el archivo y descargarlo
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
 
-  const fileName = `Inventario_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const fileName = `Inventario_IMBA_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(workbook, fileName);
 }
 
