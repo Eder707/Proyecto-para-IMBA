@@ -91,7 +91,7 @@ function exportToExcel(productos) {
       worksheet[celda].s = {
         fill: {
           patternType: "solid",
-          fgColor: { rgb: "92D050" } // Color Verde Excel
+          fgColor: { rgb: "#009FE3" } // Color azul Excel
         },
         font: {
           bold: true,
