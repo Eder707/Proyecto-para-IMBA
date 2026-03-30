@@ -129,7 +129,7 @@ function LoginPage({ onLogin }) {
         {/* Logo */}
         <div className="text-center mb-8">
           <img src="/logo-imba.png" alt="Logo IMBA" className="w-25 h-25 object-contain mx-auto mb-4" />
-          <h1 className="text-white text-2xl font-bold">VetInventory</h1>
+          <h1 className="text-white text-2xl font-bold">Veterinaria</h1>
           <p className="text-slate-400 text-sm mt-1">Sistema de Inventario Veterinario</p>
         </div>
 
@@ -548,7 +548,7 @@ export default function App() {
       <aside className="fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900 flex-col z-30 hidden lg:flex">
         <div className="px-6 py-7 flex items-center gap-3 border-b border-white/10">
           <img src="/logo-imba.png" alt="Logo IMBA" className="w-20 h-20 object-contain" />
-          <div><p className="text-white font-bold text-sm leading-tight">VetInventory</p><p className="text-slate-400 text-xs">Sistema de Inventario</p></div>
+          <div><p className="text-white font-bold text-sm leading-tight">Veterinaria</p><p className="text-slate-400 text-xs">Sistema de Inventario</p></div>
         </div>
         <nav className="flex-1 px-3 py-6 space-y-1">
           {tabs.map(t=>(
