@@ -136,6 +136,8 @@ function validateForm(form) {
   const e = {};
   if (!form.nombre.trim()) e.nombre = "El nombre es obligatorio.";
   else if (form.nombre.trim().length > LIMITES.nombre) e.nombre = `Máximo ${LIMITES.nombre} caracteres.`;
+  if (!form.categoria?.trim()) e.categoria = "La categoría es obligatoria.";
+  if (!form.presentacion?.trim()) e.presentacion = "La presentación es obligatoria.";
   if (form.descripcion && form.descripcion.length > LIMITES.descripcion) e.descripcion = `Máximo ${LIMITES.descripcion} caracteres.`;
   if (!form.precio || form.precio <= 0) e.precio = "El precio debe ser mayor a 0.";
   return e;
@@ -331,11 +333,26 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
       ? { ...product, presentacion: product.presentacion || PRESENTACIONES[0] }
       : { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0], presentacion: PRESENTACIONES[0] }
   );
+  const categoriasDisponibles = [...new Set([...CATEGORIAS, ...allProductos.map(p => p.categoria).filter(Boolean)])];
+  const [showNuevaCategoria, setShowNuevaCategoria] = useState(false);
+  const [nuevaCategoria, setNuevaCategoria] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [showDup, setShowDup] = useState(false);
   const set = k => e => { const v = e.target.type === "number" ? +e.target.value : e.target.value; setForm(f => ({ ...f, [k]: v })); setErrors(er => ({ ...er, [k]: undefined })); };
+  function agregarCategoria() {
+    const cat = nuevaCategoria.trim();
+    if (!cat) {
+      setErrors(er => ({ ...er, categoria: "Escribe una categoría válida." }));
+      return;
+    }
+    const existente = categoriasDisponibles.find(c => c.toLowerCase() === cat.toLowerCase()) || cat;
+    setForm(f => ({ ...f, categoria: existente }));
+    setNuevaCategoria("");
+    setShowNuevaCategoria(false);
+    setErrors(er => ({ ...er, categoria: undefined }));
+  }
   function checkAndSubmit() {
     const errs = validateForm(form); if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     if (!isEdit) { const dup = allProductos.some(p => p.nombre.toLowerCase().trim() === form.nombre.toLowerCase().trim()); if (dup) { setShowDup(true); return; } }
@@ -371,8 +388,23 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
                 <textarea className={inp("descripcion")} rows={2} value={form.descripcion ?? ""} onChange={set("descripcion")} maxLength={LIMITES.descripcion + 5} placeholder="Descripción breve" />
                 {errors.descripcion && <p className="text-red-500 text-xs mt-1">{errors.descripcion}</p>}
               </div>
-              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Categoría *</label><select className={inp("categoria")} value={form.categoria} onChange={set("categoria")}>{CATEGORIAS.map(c => <option key={c}>{c}</option>)}</select></div>
-              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Presentación *</label><select className={inp("presentacion")} value={form.presentacion} onChange={set("presentacion")}>{PRESENTACIONES.map(p => <option key={p}>{p}</option>)}</select></div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Categoría *</label>
+                <select className={inp("categoria")} value={form.categoria} onChange={set("categoria")}>{categoriasDisponibles.map(c => <option key={c}>{c}</option>)}</select>
+                <button type="button" onClick={() => setShowNuevaCategoria(v => !v)} className="mt-2 text-xs font-semibold text-sky-600 hover:text-sky-700 transition">+ Nueva categoría</button>
+                {showNuevaCategoria && (
+                  <div className="mt-2 flex gap-2">
+                    <input className={inp("categoria")} value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} maxLength={40} placeholder="Ej. Material de curación" />
+                    <button type="button" onClick={agregarCategoria} className="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition">Agregar</button>
+                  </div>
+                )}
+                {errors.categoria && <p className="text-red-500 text-xs mt-1">{errors.categoria}</p>}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Presentación *</label>
+                <select className={inp("presentacion")} value={form.presentacion} onChange={set("presentacion")}>{PRESENTACIONES.map(p => <option key={p}>{p}</option>)}</select>
+                {errors.presentacion && <p className="text-red-500 text-xs mt-1">{errors.presentacion}</p>}
+              </div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Precio (MXN) *</label><input type="number" className={inp("precio")} value={form.precio} onChange={set("precio")} min={0} step={0.01} />{errors.precio && <p className="text-red-500 text-xs mt-1">{errors.precio}</p>}</div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label><input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} /></div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label><input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} /></div>
