@@ -13,12 +13,8 @@ app = FastAPI(title="VetInventory API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://proyecto-para-imba.vercel.app",
-        "https://proyecto-para-imba-jsbq7mbar-eder707s-projects.vercel.app"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],           # El asterisco reemplaza a todos los links
+    allow_credentials=False,       # RECUERDA: Esto debe ser False para que el asterisco funcione
     allow_methods=["*"],
     allow_headers=["*"],
 )
