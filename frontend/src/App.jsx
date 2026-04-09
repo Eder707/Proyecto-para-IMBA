@@ -12,6 +12,7 @@ const CATEGORIAS = [
   "Medicamentos", "Vacunas", "Antiparasitarios",
   "Alimentos", "Insumos", "Equipos", "Otros",
 ];
+const PRESENTACIONES = ["PIEZA", "PAQUETE", "CAJA"];
 
 const LIMITES = { nombre: 50, descripcion: 150 };
 
@@ -79,6 +80,7 @@ function exportToExcel(productos) {
   const data = productos.map(p => ({
     "ID": p.id,
     "Nombre": p.nombre,
+    "Presentación": p.presentacion || "PIEZA",
     "Descripción": p.descripcion || "—",
     "Categoría": p.categoria,
     "Stock Actual": p.stock_actual,
@@ -94,6 +96,7 @@ function exportToExcel(productos) {
   const wscols = [
     { wch: 5 },  // ID
     { wch: 25 }, // Nombre
+    { wch: 15 }, // Presentación
     { wch: 35 }, // Descripción
     { wch: 15 }, // Categoría
     { wch: 12 }, // Stock Actual
@@ -104,7 +107,7 @@ function exportToExcel(productos) {
   worksheet['!cols'] = wscols;
 
   // 4. PINTAR EL ENCABEZADO DE AZUL
-  const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1'];
+  const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1'];
   celdasEncabezado.forEach(celda => {
     if (worksheet[celda]) {
       worksheet[celda].s = {
@@ -323,7 +326,11 @@ function DuplicateModal({ nombre, onConfirm, onCancel }) {
 
 function ProductModal({ product, allProductos, onSave, onClose }) {
   const isEdit = !!product?.id;
-  const [form, setForm] = useState(product ?? { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0] });
+  const [form, setForm] = useState(
+    product
+      ? { ...product, presentacion: product.presentacion || PRESENTACIONES[0] }
+      : { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0], presentacion: PRESENTACIONES[0] }
+  );
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -365,6 +372,7 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
                 {errors.descripcion && <p className="text-red-500 text-xs mt-1">{errors.descripcion}</p>}
               </div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Categoría *</label><select className={inp("categoria")} value={form.categoria} onChange={set("categoria")}>{CATEGORIAS.map(c => <option key={c}>{c}</option>)}</select></div>
+              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Presentación *</label><select className={inp("presentacion")} value={form.presentacion} onChange={set("presentacion")}>{PRESENTACIONES.map(p => <option key={p}>{p}</option>)}</select></div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Precio (MXN) *</label><input type="number" className={inp("precio")} value={form.precio} onChange={set("precio")} min={0} step={0.01} />{errors.precio && <p className="text-red-500 text-xs mt-1">{errors.precio}</p>}</div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label><input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} /></div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label><input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} /></div>

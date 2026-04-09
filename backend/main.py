@@ -40,6 +40,7 @@ class ProductCreate(BaseModel):
     stock_minimo: int = Field(..., ge=0)
     precio: float = Field(..., gt=0)
     categoria: str = Field(..., min_length=1, max_length=80)
+    presentacion: str = "PIEZA"
     activo: Optional[bool] = True
 
 class ProductUpdate(BaseModel):
@@ -49,6 +50,7 @@ class ProductUpdate(BaseModel):
     stock_minimo: Optional[int] = Field(None, ge=0)
     precio: Optional[float] = Field(None, gt=0)
     categoria: Optional[str] = None
+    presentacion: Optional[str] = None
     activo: Optional[bool] = None
 
 class MovimientoCreate(BaseModel):
