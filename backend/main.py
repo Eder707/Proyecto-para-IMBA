@@ -135,13 +135,37 @@ async def registrar_movimiento(mov: MovimientoCreate):
 
 @app.get("/movimientos", tags=["Movimientos"])
 async def listar_movimientos(limit: int = 50):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(db_url("movimientos"), headers={**headers(), "Prefer": ""}, params={"select": "*,productos(nombre)", "order": "created_at.desc", "limit": limit})
-    movimientos = []
-    for m in r.json():
-        m["producto_nombre"] = (m.pop("productos") or {}).get("nombre", "—")
-        movimientos.append(m)
-    return movimientos
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                db_url("movimientos"), 
+                headers={**headers(), "Prefer": ""}, 
+                params={"select": "*,productos(nombre)", "order": "created_at.desc", "limit": limit}
+            )
+            
+            # Si Supabase nos manda un error (ej. tabla bloqueada), lo cachamos aquí
+            if r.status_code != 200:
+                raise HTTPException(status_code=r.status_code, detail="Error al consultar Supabase")
+
+            data = r.json()
+            movimientos = []
+            
+            # Verificamos que data sea una lista antes de iterar
+            if isinstance(data, list):
+                for m in data:
+                    # Extraemos el nombre con cuidado por si viene vacío
+                    prod_info = m.pop("productos", None) or {}
+                    m["producto_nombre"] = prod_info.get("nombre", "—")
+                    # Quitamos espacios en blanco al final por si acaso
+                    if isinstance(m["producto_nombre"], str):
+                        m["producto_nombre"] = m["producto_nombre"].strip()
+                    movimientos.append(m)
+            
+            return movimientos
+
+    except Exception as e:
+        print(f"🔥 ERROR EN MOVIMIENTOS: {str(e)}") # Esto lo verás en los logs de Render
+        raise HTTPException(status_code=500, detail="Error interno al procesar movimientos")
 
 
 @app.get("/dashboard", tags=["Dashboard"])
