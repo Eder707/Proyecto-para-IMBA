@@ -40,17 +40,36 @@ const Icon = {
 };
 
 // ── API ────────────────────────────────────────────────
-async function apiFetch(path, options = {}) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Error de red" }));
-    throw new Error(err.detail || "Error desconocido");
+async function apiFetch(path, options = {}, retries = 3, delay = 800) {
+  try {
+    const res = await fetch(`${API}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Error de red" }));
+      const isTransient = res.status >= 500 || res.status === 429;
+
+      if (isTransient && retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return apiFetch(path, options, retries - 1, delay * 2);
+      }
+
+      const finalError = new Error(err.detail || "Error desconocido");
+      finalError.noRetry = true;
+      throw finalError;
+    }
+
+    if (res.status === 204) return null;
+    return res.json();
+  } catch (error) {
+    if (retries > 0 && !error?.noRetry) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return apiFetch(path, options, retries - 1, delay * 2);
+    }
+    throw error;
   }
-  if (res.status === 204) return null;
-  return res.json();
 }
 
 // ── EXCEL ──────────────────────────────────────────────
