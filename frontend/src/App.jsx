@@ -253,6 +253,23 @@ function FieldCounter({ value, max }) {
   return <span className={`text-xs ${over ? "text-red-500 font-semibold" : "text-slate-400"}`}>{value.length}/{max}</span>;
 }
 
+function stockToEmpaques(unidades, contenido, presentacion) {
+  const unidadesPorEmpaque = Math.max(1, Number(contenido) || 1);
+  const totalUnidades = Math.max(0, Number(unidades) || 0);
+
+  if (presentacion === "PIEZA" || unidadesPorEmpaque === 1) {
+    return `${totalUnidades} pieza${totalUnidades === 1 ? "" : "s"}`;
+  }
+
+  const empaques = Math.floor(totalUnidades / unidadesPorEmpaque);
+  const piezas = totalUnidades % unidadesPorEmpaque;
+  const nombreEmpaque = presentacion.toLowerCase();
+  const pluralEmpaque = empaques === 1 ? nombreEmpaque : `${nombreEmpaque}s`;
+
+  if (piezas === 0) return `${empaques} ${pluralEmpaque}`;
+  return `${empaques} ${pluralEmpaque} + ${piezas} pieza${piezas === 1 ? "" : "s"}`;
+}
+
 function DuplicateModal({ nombre, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
@@ -354,8 +371,15 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
                 {errors.contenido && <p className="text-red-500 text-xs mt-1">{errors.contenido}</p>}
               </div>
 
-              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label><input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} /></div>
-              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label><input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} /></div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual (Piezas/Unidades) *</label>
+                <input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} />
+                <p className="text-[11px] text-slate-400 mt-1">Se guarda en unidades para permitir salidas parciales (ej. 10 piezas de una caja x30).</p>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo (Piezas/Unidades) *</label>
+                <input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} />
+              </div>
             </div>
           </div>
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 justify-end rounded-b-3xl">
@@ -373,6 +397,12 @@ function MovModal({ product, onSave, onClose }) {
   const [form, setForm] = useState({ tipo: "entrada", cantidad: 1, notas: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const unidadesPorEmpaque = Math.max(1, Number(product.contenido) || 1);
+  const cantidadUnidades = Math.max(1, Number(form.cantidad) || 1);
+  const stockProyectado = form.tipo === "entrada"
+    ? product.stock_actual + cantidadUnidades
+    : product.stock_actual - cantidadUnidades;
+
   async function handleSubmit() {
     setLoading(true); setError("");
     try { await apiFetch("/movimientos", { method: "POST", body: JSON.stringify({ producto_id: product.id, ...form }) }); onSave(); }
@@ -388,6 +418,11 @@ function MovModal({ product, onSave, onClose }) {
         </div>
         <div className="p-6 space-y-4">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>}
+          <div className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2.5 text-xs text-sky-800 space-y-1">
+            <p><span className="font-semibold">Presentación:</span> {product.presentacion || "PIEZA"}</p>
+            <p><span className="font-semibold">Contenido por empaque:</span> {unidadesPorEmpaque} pieza{unidadesPorEmpaque === 1 ? "" : "s"}</p>
+            <p><span className="font-semibold">Disponible:</span> {product.stock_actual} unidades ({stockToEmpaques(product.stock_actual, unidadesPorEmpaque, product.presentacion || "PIEZA")})</p>
+          </div>
           <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 block">Tipo</label>
             <div className="grid grid-cols-2 gap-2">
               {["entrada", "salida"].map(t => (
@@ -398,11 +433,18 @@ function MovModal({ product, onSave, onClose }) {
               ))}
             </div>
           </div>
-          <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Cantidad</label><input type="number" className={inp} min={1} value={form.cantidad} onChange={e => setForm(f => ({ ...f, cantidad: +e.target.value }))} /></div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Cantidad (Piezas/Unidades)</label>
+            <input type="number" className={inp} min={1} value={form.cantidad} onChange={e => setForm(f => ({ ...f, cantidad: +e.target.value }))} />
+            <p className="text-[11px] text-slate-400 mt-1">Este movimiento siempre descuenta/suma unidades, no cajas.</p>
+          </div>
           <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Notas</label><input className={inp} value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Motivo, proveedor, etc." /></div>
           <div className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2">
-            Stock actual: <span className="font-bold text-slate-600">{product.stock_actual}</span>
-            {form.tipo === "entrada" ? <> → <span className="text-emerald-600 font-bold">{product.stock_actual + form.cantidad}</span></> : <> → <span className={`font-bold ${product.stock_actual - form.cantidad < 0 ? "text-red-600" : "text-slate-600"}`}>{product.stock_actual - form.cantidad}</span></>}
+            Stock actual: <span className="font-bold text-slate-600">{product.stock_actual} u</span>
+            {form.tipo === "entrada"
+              ? <> → <span className="text-emerald-600 font-bold">{stockProyectado} u</span></>
+              : <> → <span className={`font-bold ${stockProyectado < 0 ? "text-red-600" : "text-slate-600"}`}>{stockProyectado} u</span></>}
+            <p className="mt-1">Equivalencia estimada: {stockToEmpaques(Math.max(stockProyectado, 0), unidadesPorEmpaque, product.presentacion || "PIEZA")}</p>
           </div>
         </div>
         <div className="px-6 pb-6 flex gap-3 justify-end">
@@ -518,8 +560,9 @@ function ProductosTab({ productos, onRefresh }) {
                     {/* Nueva celda que muestra la presentación y las unidades (Ej. CAJA (x20)) */}
                     <td className="px-5 py-3.5 text-slate-600 font-medium">
                       {p.presentacion || "PIEZA"} <span className="text-xs text-slate-400">(x{p.contenido || 1})</span>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{stockToEmpaques(p.stock_actual, p.contenido, p.presentacion || "PIEZA")}</p>
                     </td>
-                    <td className="px-5 py-3.5"><span className="font-bold text-slate-700">{p.stock_actual}</span><span className="text-slate-400 text-xs"> / mín {p.stock_minimo}</span></td>
+                    <td className="px-5 py-3.5"><span className="font-bold text-slate-700">{p.stock_actual} u</span><span className="text-slate-400 text-xs"> / mín {p.stock_minimo} u</span></td>
                     <td className="px-5 py-3.5 font-medium text-slate-700">${p.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
                     <td className="px-5 py-3.5"><Badge text={st.label} variant={st.v} /></td>
                     <td className="px-5 py-3.5">
