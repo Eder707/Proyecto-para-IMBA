@@ -33,6 +33,8 @@ def headers():
 def db_url(table: str) -> str:
     return f"{SUPABASE_URL}/rest/v1/{table}"
 
+# ── MODELOS MODIFICADOS CON EL CAMPO 'CONTENIDO' ──
+
 class ProductCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=150)
     descripcion: Optional[str] = None
@@ -41,6 +43,7 @@ class ProductCreate(BaseModel):
     precio: float = Field(..., gt=0)
     categoria: str = Field(..., min_length=1, max_length=80)
     presentacion: str = "PIEZA"
+    contenido: int = Field(1, ge=1)  # <--- NUEVO CAMPO (Por defecto 1, mínimo 1)
     activo: Optional[bool] = True
 
 class ProductUpdate(BaseModel):
@@ -51,6 +54,7 @@ class ProductUpdate(BaseModel):
     precio: Optional[float] = Field(None, gt=0)
     categoria: Optional[str] = None
     presentacion: Optional[str] = None
+    contenido: Optional[int] = Field(None, ge=1)  # <--- NUEVO CAMPO
     activo: Optional[bool] = None
 
 class MovimientoCreate(BaseModel):
@@ -58,6 +62,8 @@ class MovimientoCreate(BaseModel):
     tipo: str = Field(..., pattern="^(entrada|salida)$")
     cantidad: int = Field(..., gt=0)
     notas: Optional[str] = None
+
+# ── RUTAS DE LA API ──
 
 @app.get("/productos", tags=["Productos"])
 async def listar_productos(stock_bajo: Optional[bool] = None):
@@ -165,7 +171,6 @@ async def listar_movimientos(limit: int = 50):
         print(f"🔥 ERROR EN MOVIMIENTOS: {str(e)}") # Esto lo verás en los logs de Render
         raise HTTPException(status_code=500, detail="Error interno al procesar movimientos")
 
-
 @app.get("/dashboard", tags=["Dashboard"])
 async def dashboard():
     async with httpx.AsyncClient() as client:
@@ -182,11 +187,6 @@ async def dashboard():
     
     return {"total_productos": total, "productos_stock_bajo": bajo_stock, "valor_total_inventario": round(valor_total, 2), "categorias": categorias}
 
-
-
 @app.get("/health", tags=["Health"])
 async def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
-
-
-

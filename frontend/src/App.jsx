@@ -73,14 +73,13 @@ async function apiFetch(path, options = {}, retries = 3, delay = 800) {
   }
 }
 
-// ── EXCEL ──────────────────────────────────────────────
 // ── EXCEL (.XLSX CON ESTILO) ─────────────────────────
 function exportToExcel(productos) {
-  // 1. Darle formato limpio a los datos
   const data = productos.map(p => ({
     "ID": p.id,
     "Nombre": p.nombre,
     "Presentación": p.presentacion || "PIEZA",
+    "Unidades x Empaque": p.contenido || 1, // Nuevo campo
     "Descripción": p.descripcion || "—",
     "Categoría": p.categoria,
     "Stock Actual": p.stock_actual,
@@ -89,14 +88,12 @@ function exportToExcel(productos) {
     "Estado": !p.activo ? "Baja" : p.stock_actual < p.stock_minimo ? "Stock Bajo" : "OK"
   }));
 
-  // 2. Crear la hoja de Excel
   const worksheet = XLSX.utils.json_to_sheet(data);
-
-  // 3. Hacer las columnas más anchas
   const wscols = [
     { wch: 5 },  // ID
     { wch: 25 }, // Nombre
     { wch: 15 }, // Presentación
+    { wch: 18 }, // Unidades x Empaque
     { wch: 35 }, // Descripción
     { wch: 15 }, // Categoría
     { wch: 12 }, // Stock Actual
@@ -106,29 +103,19 @@ function exportToExcel(productos) {
   ];
   worksheet['!cols'] = wscols;
 
-  // 4. PINTAR EL ENCABEZADO DE AZUL
-  const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1'];
+  const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1', 'J1'];
   celdasEncabezado.forEach(celda => {
     if (worksheet[celda]) {
       worksheet[celda].s = {
-        fill: {
-          patternType: "solid",
-          fgColor: { rgb: "009FE3" } // Color azul Excel
-        },
-        font: {
-          bold: true,
-          color: { rgb: "000000" } // Letra Negra
-        }
+        fill: { patternType: "solid", fgColor: { rgb: "009FE3" } },
+        font: { bold: true, color: { rgb: "FFFFFF" } }
       };
     }
   });
 
-  // 5. Crear el archivo y descargarlo
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
-
-  const fileName = `Inventario_IMBA_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  XLSX.writeFile(workbook, fileName);
+  XLSX.writeFile(workbook, `Inventario_IMBA_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 // ── VALIDATE ───────────────────────────────────────────
@@ -138,6 +125,7 @@ function validateForm(form) {
   else if (form.nombre.trim().length > LIMITES.nombre) e.nombre = `Máximo ${LIMITES.nombre} caracteres.`;
   if (!form.categoria?.trim()) e.categoria = "La categoría es obligatoria.";
   if (!form.presentacion?.trim()) e.presentacion = "La presentación es obligatoria.";
+  if (form.contenido < 1) e.contenido = "Debe tener al menos 1 unidad.";
   if (form.descripcion && form.descripcion.length > LIMITES.descripcion) e.descripcion = `Máximo ${LIMITES.descripcion} caracteres.`;
   if (!form.precio || form.precio <= 0) e.precio = "El precio debe ser mayor a 0.";
   return e;
@@ -157,14 +145,12 @@ function LoginPage({ onLogin }) {
 
   function handleLogin() {
     if (bloqueado) return;
-    // Sanitizar — eliminar cualquier caracter especial peligroso
     const userClean = usuario.trim().replace(/[<>"'%;()&+]/g, "");
     const passClean = password.replace(/[<>"'%;()&+]/g, "");
 
     setLoading(true);
     setError("");
 
-    // Simular pequeño delay para evitar fuerza bruta rápida
     setTimeout(() => {
       if (userClean === VALID_USER && passClean === VALID_PASS) {
         sessionStorage.setItem("vet_auth", "true");
@@ -188,21 +174,18 @@ function LoginPage({ onLogin }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-      {/* Fondo decorativo */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <img src="/logo-imba.png" alt="Logo IMBA" className="w-25 h-25 object-contain mx-auto mb-4" />
           <h1 className="text-white text-2xl font-bold">INSTITUTO MUNICIPAL DE BIENESTAR ANIMAL</h1>
           <p className="text-slate-400 text-sm mt-1">Sistema de Inventario Veterinario</p>
         </div>
 
-        {/* Card */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
           <h2 className="text-white text-lg font-semibold mb-6">Iniciar Sesión</h2>
 
@@ -214,67 +197,32 @@ function LoginPage({ onLogin }) {
           )}
 
           <div className="space-y-4">
-            {/* Usuario */}
             <div>
               <label className="text-slate-300 text-xs font-semibold uppercase tracking-wide mb-2 block">Usuario</label>
-              <input
-                type="text"
-                value={usuario}
-                onChange={e => setUsuario(e.target.value)}
-                onKeyDown={handleKey}
-                disabled={bloqueado}
-                maxLength={30}
-                autoComplete="username"
-                placeholder="Ingresa tu usuario"
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition disabled:opacity-50"
-              />
+              <input type="text" value={usuario} onChange={e => setUsuario(e.target.value)} onKeyDown={handleKey} disabled={bloqueado} maxLength={30} autoComplete="username" placeholder="Ingresa tu usuario" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition disabled:opacity-50" />
             </div>
 
-            {/* Contraseña */}
             <div>
               <label className="text-slate-300 text-xs font-semibold uppercase tracking-wide mb-2 block">Contraseña</label>
               <div className="relative">
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onKeyDown={handleKey}
-                  disabled={bloqueado}
-                  maxLength={50}
-                  autoComplete="current-password"
-                  placeholder="Ingresa tu contraseña"
-                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
+                <input type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKey} disabled={bloqueado} maxLength={50} autoComplete="current-password" placeholder="Ingresa tu contraseña" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition disabled:opacity-50" />
+                <button type="button" onClick={() => setShowPass(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
                   {showPass ? <Icon.EyeOff /> : <Icon.Eye />}
                 </button>
               </div>
             </div>
 
-            {/* Botón */}
-            <button
-              onClick={handleLogin}
-              disabled={loading || bloqueado}
-              className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-sky-600/30 mt-2">
+            <button onClick={handleLogin} disabled={loading || bloqueado} className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-sky-600/30 mt-2">
               {loading ? (
                 <span className="inline-flex items-center gap-2 justify-center">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                  </svg>
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
                   Verificando…
                 </span>
               ) : bloqueado ? "Bloqueado temporalmente" : "Ingresar"}
             </button>
           </div>
         </div>
-
-        <p className="text-center text-slate-600 text-xs mt-6">
-          Acceso restringido · Solo personal autorizado
-        </p>
+        <p className="text-center text-slate-600 text-xs mt-6">Acceso restringido · Solo personal autorizado</p>
       </div>
     </div>
   );
@@ -309,18 +257,9 @@ function DuplicateModal({ nombre, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-4 flex items-center gap-3">
-          <span className="text-amber-500"><Icon.Alert /></span>
-          <h3 className="font-bold text-amber-800">Producto duplicado</h3>
-        </div>
-        <div className="px-6 py-5">
-          <p className="text-slate-600 text-sm">Ya existe un producto llamado <span className="font-bold text-slate-800">"{nombre}"</span>.</p>
-          <p className="text-slate-500 text-sm mt-2">¿Deseas crearlo de todas formas?</p>
-        </div>
-        <div className="px-6 pb-5 flex gap-3 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">Cancelar</button>
-          <button onClick={onConfirm} className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition">Sí, crear igual</button>
-        </div>
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-4 flex items-center gap-3"><span className="text-amber-500"><Icon.Alert /></span><h3 className="font-bold text-amber-800">Producto duplicado</h3></div>
+        <div className="px-6 py-5"><p className="text-slate-600 text-sm">Ya existe un producto llamado <span className="font-bold text-slate-800">"{nombre}"</span>.</p><p className="text-slate-500 text-sm mt-2">¿Deseas crearlo de todas formas?</p></div>
+        <div className="px-6 pb-5 flex gap-3 justify-end"><button onClick={onCancel} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">Cancelar</button><button onClick={onConfirm} className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition">Sí, crear igual</button></div>
       </div>
     </div>
   );
@@ -330,8 +269,8 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
   const isEdit = !!product?.id;
   const [form, setForm] = useState(
     product
-      ? { ...product, presentacion: product.presentacion || PRESENTACIONES[0] }
-      : { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0], presentacion: PRESENTACIONES[0] }
+      ? { ...product, presentacion: product.presentacion || PRESENTACIONES[0], contenido: product.contenido || 1 }
+      : { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0], presentacion: PRESENTACIONES[0], contenido: 1 }
   );
   const categoriasDisponibles = [...new Set([...CATEGORIAS, ...allProductos.map(p => p.categoria).filter(Boolean)])];
   const [showNuevaCategoria, setShowNuevaCategoria] = useState(false);
@@ -340,24 +279,23 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [showDup, setShowDup] = useState(false);
+
   const set = k => e => { const v = e.target.type === "number" ? +e.target.value : e.target.value; setForm(f => ({ ...f, [k]: v })); setErrors(er => ({ ...er, [k]: undefined })); };
+  
   function agregarCategoria() {
     const cat = nuevaCategoria.trim();
-    if (!cat) {
-      setErrors(er => ({ ...er, categoria: "Escribe una categoría válida." }));
-      return;
-    }
+    if (!cat) { setErrors(er => ({ ...er, categoria: "Escribe una categoría válida." })); return; }
     const existente = categoriasDisponibles.find(c => c.toLowerCase() === cat.toLowerCase()) || cat;
     setForm(f => ({ ...f, categoria: existente }));
-    setNuevaCategoria("");
-    setShowNuevaCategoria(false);
-    setErrors(er => ({ ...er, categoria: undefined }));
+    setNuevaCategoria(""); setShowNuevaCategoria(false); setErrors(er => ({ ...er, categoria: undefined }));
   }
+
   function checkAndSubmit() {
     const errs = validateForm(form); if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     if (!isEdit) { const dup = allProductos.some(p => p.nombre.toLowerCase().trim() === form.nombre.toLowerCase().trim()); if (dup) { setShowDup(true); return; } }
     doSave();
   }
+
   async function doSave() {
     setShowDup(false); setLoading(true); setApiError("");
     try {
@@ -366,7 +304,9 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
       onSave();
     } catch (e) { setApiError(e.message); } finally { setLoading(false); }
   }
+
   const inp = f => `w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent transition ${errors[f] ? "border-red-400 focus:ring-red-300" : "border-slate-200 focus:ring-sky-400"}`;
+  
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
@@ -375,7 +315,7 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
             <div><h2 className="text-white text-lg font-bold">{isEdit ? "Editar Producto" : "Nuevo Producto"}</h2><p className="text-sky-200 text-xs mt-0.5">{isEdit ? "Modifica los campos necesarios" : "Completa la información"}</p></div>
             <button onClick={onClose} className="text-white/70 hover:text-white transition"><Icon.X /></button>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4 h-96 overflow-y-auto">
             {apiError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{apiError}</div>}
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -394,24 +334,32 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
                 <button type="button" onClick={() => setShowNuevaCategoria(v => !v)} className="mt-2 text-xs font-semibold text-sky-600 hover:text-sky-700 transition">+ Nueva categoría</button>
                 {showNuevaCategoria && (
                   <div className="mt-2 flex gap-2">
-                    <input className={inp("categoria")} value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} maxLength={40} placeholder="Ej. Material de curación" />
-                    <button type="button" onClick={agregarCategoria} className="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition">Agregar</button>
+                    <input className={inp("categoria")} value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} maxLength={40} placeholder="Ej. Material" />
+                    <button type="button" onClick={agregarCategoria} className="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition">Añadir</button>
                   </div>
                 )}
                 {errors.categoria && <p className="text-red-500 text-xs mt-1">{errors.categoria}</p>}
               </div>
+              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Precio (MXN) *</label><input type="number" className={inp("precio")} value={form.precio} onChange={set("precio")} min={0} step={0.01} />{errors.precio && <p className="text-red-500 text-xs mt-1">{errors.precio}</p>}</div>
+              
+              {/* Nueva Fila: Presentación y Unidades */}
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Presentación *</label>
                 <select className={inp("presentacion")} value={form.presentacion} onChange={set("presentacion")}>{PRESENTACIONES.map(p => <option key={p}>{p}</option>)}</select>
                 {errors.presentacion && <p className="text-red-500 text-xs mt-1">{errors.presentacion}</p>}
               </div>
-              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Precio (MXN) *</label><input type="number" className={inp("precio")} value={form.precio} onChange={set("precio")} min={0} step={0.01} />{errors.precio && <p className="text-red-500 text-xs mt-1">{errors.precio}</p>}</div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Unidades x Empaque *</label>
+                <input type="number" className={inp("contenido")} value={form.contenido} onChange={set("contenido")} min={1} placeholder="Ej. 20" />
+                {errors.contenido && <p className="text-red-500 text-xs mt-1">{errors.contenido}</p>}
+              </div>
+
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label><input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} /></div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label><input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} /></div>
             </div>
           </div>
-          <div className="px-6 pb-6 flex gap-3 justify-end">
-            <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">Cancelar</button>
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 justify-end rounded-b-3xl">
+            <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-white transition">Cancelar</button>
             <button onClick={checkAndSubmit} disabled={loading} className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition disabled:opacity-50">{loading ? "Guardando…" : isEdit ? "Guardar Cambios" : "Crear Producto"}</button>
           </div>
         </div>
@@ -553,15 +501,24 @@ function ProductosTab({ productos, onRefresh }) {
       </div>
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-slate-100">{["Producto", "Categoría", "Stock", "Precio", "Estado", "Acciones"].map(h => <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-4">{h}</th>)}</tr></thead>
+          <thead>
+            <tr className="border-b border-slate-100">
+              {/* Se agregó la columna Empaque */}
+              {["Producto", "Categoría", "Empaque", "Stock", "Precio", "Estado", "Acciones"].map(h => <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-4">{h}</th>)}
+            </tr>
+          </thead>
           <tbody className="divide-y divide-slate-50">
-            {paginated.length === 0 ? <tr><td colSpan={6} className="text-center text-slate-400 py-12 text-sm">Sin resultados</td></tr>
+            {paginated.length === 0 ? <tr><td colSpan={7} className="text-center text-slate-400 py-12 text-sm">Sin resultados</td></tr>
               : paginated.map(p => {
                 const st = stockStatus(p); const inactivo = p.activo === false;
                 return (
                   <tr key={p.id} className={`hover:bg-slate-50/60 transition ${inactivo ? "opacity-50" : ""}`}>
                     <td className="px-5 py-3.5"><p className="font-semibold text-slate-800">{p.nombre}</p>{p.descripcion && <p className="text-xs text-slate-400 truncate max-w-48">{p.descripcion}</p>}</td>
                     <td className="px-5 py-3.5"><Badge text={p.categoria} variant="info" /></td>
+                    {/* Nueva celda que muestra la presentación y las unidades (Ej. CAJA (x20)) */}
+                    <td className="px-5 py-3.5 text-slate-600 font-medium">
+                      {p.presentacion || "PIEZA"} <span className="text-xs text-slate-400">(x{p.contenido || 1})</span>
+                    </td>
                     <td className="px-5 py-3.5"><span className="font-bold text-slate-700">{p.stock_actual}</span><span className="text-slate-400 text-xs"> / mín {p.stock_minimo}</span></td>
                     <td className="px-5 py-3.5 font-medium text-slate-700">${p.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
                     <td className="px-5 py-3.5"><Badge text={st.label} variant={st.v} /></td>
@@ -671,10 +628,8 @@ export default function App() {
       </aside>
 
       <header className="lg:hidden sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex flex-col gap-3 shadow-sm">
-        {/* Fila 1: Logo y botón Salir */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* Redujimos el logo de w-20 a w-8 para que no estorbe */}
             <img src="/logo-imba.png" alt="Logo IMBA" className="w-8 h-8 object-contain" />
             <span className="font-bold text-slate-800 text-sm">IMBA Veterinaria</span>
           </div>
@@ -682,8 +637,6 @@ export default function App() {
             Salir
           </button>
         </div>
-
-        {/* Fila 2: Pestañas de navegación distribuidas equitativamente */}
         <div className="flex gap-2 w-full justify-between">
           {tabs.map(t => (
             <button
