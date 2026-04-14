@@ -280,7 +280,7 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
   const [apiError, setApiError] = useState("");
   const [showDup, setShowDup] = useState(false);
 
-  const set = k => e => { const v = e.target.type === "number" ? +e.target.value : e.target.value; setForm(f => ({ ...f, [k]: v })); setErrors(er => ({ ...er, [k]: undefined })); };
+  const set = k => e => { setForm(f => ({ ...f, [k]: e.target.value })); setErrors(er => ({ ...er, [k]: undefined })); };
   
   function agregarCategoria() {
     const cat = nuevaCategoria.trim();
