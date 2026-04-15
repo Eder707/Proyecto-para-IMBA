@@ -79,7 +79,6 @@ function exportToExcel(productos) {
     "ID": p.id,
     "Nombre": p.nombre,
     "Presentación": p.presentacion || "PIEZA",
-    "Unidades x Empaque": p.contenido || 1, // Nuevo campo
     "Descripción": p.descripcion || "—",
     "Categoría": p.categoria,
     "Stock Actual": p.stock_actual,
@@ -93,7 +92,6 @@ function exportToExcel(productos) {
     { wch: 5 },  // ID
     { wch: 25 }, // Nombre
     { wch: 15 }, // Presentación
-    { wch: 18 }, // Unidades x Empaque
     { wch: 35 }, // Descripción
     { wch: 15 }, // Categoría
     { wch: 12 }, // Stock Actual
@@ -103,7 +101,7 @@ function exportToExcel(productos) {
   ];
   worksheet['!cols'] = wscols;
 
-  const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1', 'J1'];
+  const celdasEncabezado = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1'];
   celdasEncabezado.forEach(celda => {
     if (worksheet[celda]) {
       worksheet[celda].s = {
@@ -125,9 +123,6 @@ function validateForm(form) {
   else if (form.nombre.trim().length > LIMITES.nombre) e.nombre = `Máximo ${LIMITES.nombre} caracteres.`;
   if (!form.categoria?.trim()) e.categoria = "La categoría es obligatoria.";
   if (!form.presentacion?.trim()) e.presentacion = "La presentación es obligatoria.";
-  if (!form.contenido || parseInt(form.contenido, 10) < 1) {
-    e.contenido = "El contenido debe ser al menos 1.";
-  }
   if (form.descripcion && form.descripcion.length > LIMITES.descripcion) e.descripcion = `Máximo ${LIMITES.descripcion} caracteres.`;
   if (!form.precio || form.precio <= 0) e.precio = "El precio debe ser mayor a 0.";
   return e;
@@ -271,8 +266,8 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
   const isEdit = !!product?.id;
   const [form, setForm] = useState(
     product
-      ? { ...product, presentacion: product.presentacion || PRESENTACIONES[0], contenido: product.contenido || 1 }
-      : { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0], presentacion: PRESENTACIONES[0], contenido: 1 }
+      ? { ...product, presentacion: product.presentacion || PRESENTACIONES[0] }
+      : { nombre: "", descripcion: "", stock_actual: 0, stock_minimo: 0, precio: 0, categoria: CATEGORIAS[0], presentacion: PRESENTACIONES[0] }
   );
   const categoriasDisponibles = [...new Set([...CATEGORIAS, ...allProductos.map(p => p.categoria).filter(Boolean)])];
   const [showNuevaCategoria, setShowNuevaCategoria] = useState(false);
@@ -302,7 +297,6 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
     setShowDup(false); setLoading(true); setApiError("");
     const dataToSend = {
       ...form,
-      contenido: parseInt(form.contenido, 10) || 1,
       stock_actual: parseInt(form.stock_actual, 10) || 0,
       precio: parseFloat(form.precio) || 0,
     };
@@ -350,26 +344,16 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
               </div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Precio (MXN) *</label><input type="number" className={inp("precio")} value={form.precio} onChange={set("precio")} min={0} step={0.01} />{errors.precio && <p className="text-red-500 text-xs mt-1">{errors.precio}</p>}</div>
               
-              {/* Nueva Fila: Presentación y Unidades */}
+              {/* Fila: Presentación */}
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Presentación *</label>
                 <select className={inp("presentacion")} value={form.presentacion} onChange={set("presentacion")}>{PRESENTACIONES.map(p => <option key={p}>{p}</option>)}</select>
                 {errors.presentacion && <p className="text-red-500 text-xs mt-1">{errors.presentacion}</p>}
               </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Unidades x Empaque *</label>
-                <input type="number" className={inp("contenido")} value={form.contenido} onChange={set("contenido")} min={1} placeholder="Ej. 20" />
-                {errors.contenido && <p className="text-red-500 text-xs mt-1">{errors.contenido}</p>}
-              </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual (Total uds) *</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label>
                 <input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} />
-                {form.contenido > 1 && form.stock_actual > 0 && (
-                  <p className="text-xs text-emerald-600 font-medium mt-1.5">
-                    📦 Equivale a {(form.stock_actual / form.contenido).toFixed(1).replace('.0', '')} {form.presentacion}(s)
-                  </p>
-                )}
               </div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label><input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} /></div>
             </div>
@@ -519,33 +503,20 @@ function ProductosTab({ productos, onRefresh }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100">
-              {/* Se agregó la columna Empaque */}
-              {["Producto", "Categoría", "Empaque", "Stock", "Precio", "Estado", "Acciones"].map(h => <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-4">{h}</th>)}
+              {["Producto", "Categoría", "Stock", "Precio", "Estado", "Acciones"].map(h => <th key={h} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-4">{h}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {paginated.length === 0 ? <tr><td colSpan={7} className="text-center text-slate-400 py-12 text-sm">Sin resultados</td></tr>
+            {paginated.length === 0 ? <tr><td colSpan={6} className="text-center text-slate-400 py-12 text-sm">Sin resultados</td></tr>
               : paginated.map(p => {
                 const st = stockStatus(p); const inactivo = p.activo === false;
                 return (
                   <tr key={p.id} className={`hover:bg-slate-50/60 transition ${inactivo ? "opacity-50" : ""}`}>
                     <td className="px-5 py-3.5"><p className="font-semibold text-slate-800">{p.nombre}</p>{p.descripcion && <p className="text-xs text-slate-400 truncate max-w-48">{p.descripcion}</p>}</td>
                     <td className="px-5 py-3.5"><Badge text={p.categoria} variant="info" /></td>
-                    {/* Nueva celda que muestra la presentación y las unidades (Ej. CAJA (x20)) */}
-                    <td className="px-5 py-3.5 text-slate-600 font-medium">
-                      {p.presentacion || "PIEZA"} <span className="text-xs text-slate-400">(x{p.contenido || 1})</span>
-                    </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-700">
-                          {p.contenido > 1
-                            ? `${(p.stock_actual / p.contenido).toFixed(1).replace('.0', '')} ${p.presentacion}s`
-                            : `${p.stock_actual} Uds`}
-                        </span>
-                        <span className="text-slate-400 text-xs">
-                          Total: {p.stock_actual} uds / mín {p.stock_minimo}
-                        </span>
-                      </div>
+                      <span className="font-bold text-slate-700">{p.stock_actual}</span>
+                      <span className="text-slate-400 text-xs"> / mín {p.stock_minimo}</span>
                     </td>
                     <td className="px-5 py-3.5 font-medium text-slate-700">${p.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
                     <td className="px-5 py-3.5"><Badge text={st.label} variant={st.v} /></td>

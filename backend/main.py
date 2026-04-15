@@ -33,7 +33,7 @@ def headers():
 def db_url(table: str) -> str:
     return f"{SUPABASE_URL}/rest/v1/{table}"
 
-# ── MODELOS MODIFICADOS CON EL CAMPO 'CONTENIDO' ──
+# ── MODELOS DE PRODUCTO ──
 
 class ProductCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=150)
@@ -43,7 +43,6 @@ class ProductCreate(BaseModel):
     precio: float = Field(..., gt=0)
     categoria: str = Field(..., min_length=1, max_length=80)
     presentacion: str = "PIEZA"
-    contenido: int = Field(1, ge=1)  # <--- NUEVO CAMPO (Por defecto 1, mínimo 1)
     activo: Optional[bool] = True
 
 class ProductUpdate(BaseModel):
@@ -54,7 +53,6 @@ class ProductUpdate(BaseModel):
     precio: Optional[float] = Field(None, gt=0)
     categoria: Optional[str] = None
     presentacion: Optional[str] = None
-    contenido: Optional[int] = Field(None, ge=1)  # <--- NUEVO CAMPO
     activo: Optional[bool] = None
 
 class MovimientoCreate(BaseModel):
