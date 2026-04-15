@@ -354,7 +354,15 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
                 {errors.contenido && <p className="text-red-500 text-xs mt-1">{errors.contenido}</p>}
               </div>
 
-              <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual *</label><input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} /></div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Actual (Total uds) *</label>
+                <input type="number" className={inp("stock_actual")} value={form.stock_actual} onChange={set("stock_actual")} min={0} />
+                {form.contenido > 1 && form.stock_actual > 0 && (
+                  <p className="text-xs text-emerald-600 font-medium mt-1.5">
+                    📦 Equivale a {(form.stock_actual / form.contenido).toFixed(1).replace('.0', '')} {form.presentacion}(s)
+                  </p>
+                )}
+              </div>
               <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Stock Mínimo *</label><input type="number" className={inp("stock_minimo")} value={form.stock_minimo} onChange={set("stock_minimo")} min={0} /></div>
             </div>
           </div>
@@ -519,7 +527,18 @@ function ProductosTab({ productos, onRefresh }) {
                     <td className="px-5 py-3.5 text-slate-600 font-medium">
                       {p.presentacion || "PIEZA"} <span className="text-xs text-slate-400">(x{p.contenido || 1})</span>
                     </td>
-                    <td className="px-5 py-3.5"><span className="font-bold text-slate-700">{p.stock_actual}</span><span className="text-slate-400 text-xs"> / mín {p.stock_minimo}</span></td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700">
+                          {p.contenido > 1
+                            ? `${(p.stock_actual / p.contenido).toFixed(1).replace('.0', '')} ${p.presentacion}s`
+                            : `${p.stock_actual} Uds`}
+                        </span>
+                        <span className="text-slate-400 text-xs">
+                          Total: {p.stock_actual} uds / mín {p.stock_minimo}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-5 py-3.5 font-medium text-slate-700">${p.precio.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
                     <td className="px-5 py-3.5"><Badge text={st.label} variant={st.v} /></td>
                     <td className="px-5 py-3.5">
