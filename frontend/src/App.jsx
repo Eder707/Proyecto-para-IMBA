@@ -125,7 +125,9 @@ function validateForm(form) {
   else if (form.nombre.trim().length > LIMITES.nombre) e.nombre = `Máximo ${LIMITES.nombre} caracteres.`;
   if (!form.categoria?.trim()) e.categoria = "La categoría es obligatoria.";
   if (!form.presentacion?.trim()) e.presentacion = "La presentación es obligatoria.";
-  if (form.contenido < 1) e.contenido = "Debe tener al menos 1 unidad.";
+  if (!form.contenido || parseInt(form.contenido, 10) < 1) {
+    e.contenido = "El contenido debe ser al menos 1.";
+  }
   if (form.descripcion && form.descripcion.length > LIMITES.descripcion) e.descripcion = `Máximo ${LIMITES.descripcion} caracteres.`;
   if (!form.precio || form.precio <= 0) e.precio = "El precio debe ser mayor a 0.";
   return e;
@@ -298,9 +300,15 @@ function ProductModal({ product, allProductos, onSave, onClose }) {
 
   async function doSave() {
     setShowDup(false); setLoading(true); setApiError("");
+    const dataToSend = {
+      ...form,
+      contenido: parseInt(form.contenido, 10) || 1,
+      stock_actual: parseInt(form.stock_actual, 10) || 0,
+      precio: parseFloat(form.precio) || 0,
+    };
     try {
-      if (isEdit) await apiFetch(`/productos/${product.id}`, { method: "PUT", body: JSON.stringify(form) });
-      else await apiFetch("/productos", { method: "POST", body: JSON.stringify(form) });
+      if (isEdit) await apiFetch(`/productos/${product.id}`, { method: "PUT", body: JSON.stringify(dataToSend) });
+      else await apiFetch("/productos", { method: "POST", body: JSON.stringify(dataToSend) });
       onSave();
     } catch (e) { setApiError(e.message); } finally { setLoading(false); }
   }
